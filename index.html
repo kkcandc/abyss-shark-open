@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ABYSS — Open Ocean</title>
+    <meta name="abyss-build" content="bite-punch-1" />
+    <meta name="description" content="ABYSS is an open-ocean shark exploration game. Hunt, grow, and chart the reef, the kelp, the wrecks, and the trench." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,620&family=Outfit:wght@300;450;580&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="view"></canvas>
+      <div id="vignette"></div>
+      <div id="bite-flash" aria-hidden="true"></div>
+      <div id="chomp" aria-hidden="true">Chomp</div>
+      <div id="fps"></div>
+
+      <section id="title">
+        <p class="eyebrow">Open ocean</p>
+        <h1>ABYSS</h1>
+        <p class="lede">You are a shark with a long memory. Hunt the light, follow the dark, and grow until the trench knows your name.</p>
+        <div class="actions">
+          <button id="dive" type="button">Dive</button>
+          <button id="continue" type="button" hidden>Continue the dive</button>
+          <button id="anew" type="button" hidden>Begin again</button>
+        </div>
+        <p id="save-blurb"></p>
+        <ul class="keys">
+          <li>Mouse or A D steers</li>
+          <li>W faster · Shift burst</li>
+          <li>Swim through small fish · Space lunges</li>
+          <li>M chart · C journal · Esc pause</li>
+        </ul>
+      </section>
+
+      <div id="hud" class="hidden">
+        <canvas id="compass"></canvas>
+        <div id="place">
+          <div id="region-name">The Blue</div>
+          <div id="depth">0 m</div>
+        </div>
+        <div id="vitals">
+          <label>Hunger</label>
+          <div class="bar"><i id="hunger-fill"></i></div>
+          <label>Stamina</label>
+          <div class="bar stamina"><i id="stamina-fill"></i></div>
+        </div>
+        <div id="growth">
+          <div id="stage-name">Pup</div>
+          <div id="length">1.7 m</div>
+          <div class="bar thin"><i id="growth-fill"></i></div>
+          <div id="next-stage"></div>
+        </div>
+        <div id="stats">
+          <div id="eaten">0 eaten</div>
+          <div id="found">0 / 14 found</div>
+        </div>
+        <div id="reticle" hidden>
+          <div id="reticle-ring"></div>
+          <div id="reticle-label"></div>
+        </div>
+        <p id="hint">Mouse steers · W faster · Shift burst · Space to lunge</p>
+      </div>
+
+      <div id="card" class="hidden">
+        <p id="card-eye"></p>
+        <h2 id="card-title"></h2>
+        <p id="card-sub"></p>
+      </div>
+      <div id="toast" role="status"></div>
+
+      <section id="map" class="panel hidden">
+        <header>
+          <p class="eyebrow">Chart</p>
+          <button id="close-map" type="button">Close</button>
+        </header>
+        <canvas id="map-canvas" width="720" height="460"></canvas>
+        <p class="fine">Uncharted rings are real water. Swim to them. Wrecks appear when you find the hull.</p>
+      </section>
+
+      <section id="codex" class="panel hidden">
+        <header>
+          <p class="eyebrow">Journal</p>
+          <button id="close-codex" type="button">Close</button>
+        </header>
+        <ul id="codex-list"></ul>
+      </section>
+
+      <section id="pause" class="panel pause hidden">
+        <p class="eyebrow">Still water</p>
+        <h2>Held in the current</h2>
+        <p id="pause-stats"></p>
+        <ul class="keys">
+          <li>W accelerate · S ease off · the shark never fully stops</li>
+          <li>A D or arrows turn · arrows or R F pitch</li>
+          <li>Shift burst · Space or E lunge · swim through small fish</li>
+          <li>M chart · C journal</li>
+        </ul>
+        <div class="actions">
+          <button id="resume" type="button">Resume</button>
+          <button id="surface" type="button">Surface</button>
+          <button id="forget" type="button">Forget this shark</button>
+        </div>
+      </section>
+
+      <div id="touch">
+        <button id="btn-burst" type="button">Burst</button>
+        <button id="btn-bite" type="button">Bite</button>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
