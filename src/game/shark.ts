@@ -25,6 +25,7 @@ export class Shark {
   growth = 0
   lunge = 0
   bite = 0
+  readonly biteWindow = 0.34
   air = false
   vy = 0
   nose = 0.86
@@ -323,18 +324,30 @@ export class Shark {
     this.position.addScaledVector(dir, amount)
   }
 
-  animate(time: number): void {
-    const wag = Math.sin(time * (3.2 + this.speed * 0.28))
-    this.tail.rotation.y = wag * (0.34 + Math.min(this.speed, 22) * 0.012)
-    const open = this.lunge > 0 || this.bite > 0
-    this.jaw.rotation.x = open ? 0.7 : 0.04
-    if (this.bite > 0) this.bite = Math.max(0, this.bite - 1 / 60)
+  snapBite(): void {
+    this.bite = this.biteWindow
   }
 
-  syncMesh(time: number): void {
-    this.animate(time)
-    this.group.position.copy(this.position)
-    this.group.scale.setScalar(this.scale)
+  animate(time: number, dt: number): void {
+    const wag = Math.sin(time * (3.2 + this.speed * 0.28))
+    this.tail.rotation.y = wag * (0.34 + Math.min(this.speed, 22) * 0.012)
+    let jaw = this.lunge > 0 ? 0.78 : 0.05
+    if (this.bite > 0) {
+      const u = 1 - this.bite / this.biteWindow
+      const open = u < 0.16 ? u / 0.16 : Math.max(0, 1 - (u - 0.16) / 0.4)
+      jaw = 0.05 + Math.min(1, open) * 1.15
+      this.bite = Math.max(0, this.bite - dt)
+    }
+    this.jaw.rotation.x = jaw
+  }
+
+  syncMesh(time: number, dt = 1 / 60): void {
+    const biteLeft = this.bite
+    this.animate(time, dt)
+    const lungeK = this.lunge > 0 ? this.lunge / 0.36 : 0
+    const biteK = biteLeft > 0 ? Math.sin((1 - biteLeft / this.biteWindow) * Math.PI) : 0
+    this.group.position.copy(this.position).addScaledVector(this.forward, lungeK * 0.22 + biteK * 0.48)
+    this.group.scale.setScalar(this.scale * (1 + biteK * 0.04))
     alignZ(this.q, this.forward, this.roll)
     this.group.quaternion.copy(this.q)
   }

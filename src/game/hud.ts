@@ -52,6 +52,7 @@ export class Hud {
   private saveBlurb = el('save-blurb')
   private pauseStats = el('pause-stats')
   private toastTimer = 0
+  private chompMark = 0
 
   constructor() {
     this.compass.width = 440
@@ -89,6 +90,19 @@ export class Hud {
       this.toastTimer -= dt
       if (this.toastTimer <= 0) this.toast.classList.remove('show')
     }
+    if (this.chompMark && performance.now() > this.chompMark) {
+      this.vignette.classList.remove('chomp')
+      this.chompMark = 0
+      document.documentElement.dataset.chomp = '0'
+    }
+  }
+
+  chomp(): void {
+    restart(el('chomp'), 'show')
+    restart(el('bite-flash'), 'on')
+    this.vignette.classList.add('chomp')
+    this.chompMark = performance.now() + 640
+    document.documentElement.dataset.chomp = '1'
   }
 
   showTitle(blurb: string, hasSave: boolean): void {
@@ -156,6 +170,12 @@ function el(id: string): HTMLElement {
   const node = document.getElementById(id)
   if (!node) throw new Error(`Missing #${id}`)
   return node
+}
+
+function restart(node: HTMLElement, cls: string): void {
+  node.classList.remove(cls)
+  void node.offsetWidth
+  node.classList.add(cls)
 }
 
 function drawCompass(canvas: HTMLCanvasElement, yaw: number): void {

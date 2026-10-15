@@ -61,6 +61,10 @@ export class Game {
   private fpsOn = new URLSearchParams(location.search).has('fps')
   private lockTarget: { x: number; y: number; z: number } | null = null
   private lastScan: Scan | null = null
+  private bitePunch = 0
+  private hitStop = 0
+  private shakeT = 0
+  private baseFov = 64
 
   constructor(private canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({
@@ -73,6 +77,7 @@ export class Game {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping
     this.renderer.toneMappingExposure = 1.02
+    this.baseFov = 64
     this.camera = new THREE.PerspectiveCamera(64, window.innerWidth / window.innerHeight, 0.12, 2200)
     this.sea = new Sea(this.scene)
     this.sea.addShafts(this.scene)
@@ -284,15 +289,23 @@ export class Game {
   }
 
   private frame = (now: number): void => {
-    const dt = clamp((now - this.last) / 1000, 0, 0.05)
+    const realDt = clamp((now - this.last) / 1000, 0, 0.05)
     this.last = now
     if (this.fpsOn) {
-      this.fps = this.fps * 0.9 + (dt > 0 ? 1 / dt : 60) * 0.1
+      this.fps = this.fps * 0.9 + (realDt > 0 ? 1 / realDt : 60) * 0.1
       const node = document.getElementById('fps')
       if (node) node.textContent = `${this.fps.toFixed(0)} fps`
     }
-    uTime.value += dt
+    this.shakeT += realDt
+    if (this.bitePunch > 0) this.bitePunch = Math.max(0, this.bitePunch - realDt / 0.42)
+    let dt = realDt
     const playing = this.mode === 'play' && this.overlay === 'none'
+    if (playing && this.hitStop > 0) {
+      const held = Math.min(this.hitStop, dt)
+      this.hitStop -= held
+      dt -= held
+    }
+    uTime.value += dt
     let lunged = false
     if (this.mode === 'attract') {
       this.shark.attract(dt)
@@ -334,19 +347,21 @@ export class Game {
       this.shark.syncMesh(uTime.value)
     }
 
-    if (this.mode === 'attract' || playing) this.shark.syncMesh(uTime.value)
-    this.follow(dt, this.mode === 'attract')
+    if (this.mode === 'attract' || playing) this.shark.syncMesh(uTime.value, realDt)
+    this.follow(realDt, this.mode === 'attract')
     const atmo = sampleAtmosphere(this.camera.position.x, this.camera.position.y, this.camera.position.z, this.shark.air || this.camera.position.y > -0.2)
     sceneryFog.color.copy(atmo.fog)
     sceneryFog.density.value = atmo.density
-    this.sea.update(dt, this.camera, atmo, this.shark.air)
+    this.renderer.toneMappingExposure = 1.02 + this.bitePunch * 0.72
+    this.sea.setPunch(this.bitePunch)
+    this.sea.update(realDt, this.camera, atmo, this.shark.air)
     if (playing && (this.keys.has('shift') || this.burstHeld) && Math.random() < dt * 8) {
       const tail = this.shark.position.clone().addScaledVector(this.shark.forward, -this.shark.scale)
       this.sea.burst(tail.x, tail.y, tail.z, 1)
     }
     this.audio.setDepth(Math.max(0, -this.camera.position.y), this.overlay !== 'none' || this.mode === 'attract')
-    this.cardsTick(dt)
-    this.paintHud(dt)
+    this.cardsTick(realDt)
+    this.paintHud(realDt)
     this.composer.render()
     requestAnimationFrame(this.frame)
   }
@@ -363,9 +378,13 @@ export class Game {
       this.save.growth += species.growth * bonus
       this.save.fishEaten += 1
       this.shark.growth = this.save.growth
-      this.shark.bite = 0.22
+      this.shark.snapBite()
+      this.bitePunch = 1
+      this.hitStop = 0.045
       this.audio.bite()
       this.sea.burst(scan.eat.x, scan.eat.y, scan.eat.z, 8)
+      this.sea.scales(scan.eat.x, scan.eat.y, scan.eat.z)
+      this.hud.chomp()
       const next = stageIndex(this.save.growth)
       if (next !== this.stage) {
         this.stage = next
@@ -487,8 +506,16 @@ export class Game {
     this.camera.lookAt(_look)
     this.camera.rotateZ(s.roll * (attract ? 0.25 : 0.5))
     const targetFov = s.speed > 15 ? 76 : 64
-    this.camera.fov = lerp(this.camera.fov, targetFov, 1 - Math.exp(-3 * dt))
+    this.baseFov = lerp(this.baseFov, targetFov, 1 - Math.exp(-3 * dt))
+    this.camera.fov = this.baseFov + (!attract && this.bitePunch > 0 ? this.bitePunch * 8 : 0)
     this.camera.updateProjectionMatrix()
+    if (!attract && this.bitePunch > 0) {
+      const kick = this.bitePunch * this.bitePunch
+      this.camera.position.addScaledVector(s.forward, -0.78 * kick)
+      this.camera.position.x += Math.sin(this.shakeT * 68) * 0.32 * kick
+      this.camera.position.y += Math.cos(this.shakeT * 51) * 0.24 * kick
+      this.camera.rotateZ(Math.sin(this.shakeT * 59) * 0.07 * this.bitePunch)
+    }
   }
 
   private paintHud(dt: number): void {

@@ -30,6 +30,45 @@ button { cursor: pointer; }
 #vignette.deep {
   background: radial-gradient(ellipse at center, transparent 30%, rgba(0, 0, 0, 0.72) 100%);
 }
+#vignette.chomp {
+  background: radial-gradient(circle at 50% 44%, rgba(255, 252, 245, 0.5), rgba(158, 231, 212, 0.16) 26%, transparent 54%);
+}
+#bite-flash {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  background: rgba(255, 252, 245, 0.55);
+  opacity: 0;
+}
+#bite-flash.on { animation: biteflash 0.26s ease-out; }
+@keyframes biteflash {
+  0% { opacity: 0.62; }
+  100% { opacity: 0; }
+}
+#chomp {
+  position: fixed;
+  left: 50%;
+  top: 34%;
+  z-index: 6;
+  margin: 0;
+  pointer-events: none;
+  font-family: Fraunces, Georgia, serif;
+  font-weight: 500;
+  font-size: clamp(72px, 11vw, 128px);
+  letter-spacing: -0.045em;
+  line-height: 0.85;
+  color: #f7fffc;
+  text-shadow: 0 0 28px rgba(158, 231, 212, 0.9), 0 12px 32px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(1.08);
+}
+#chomp.show { animation: chomp 0.62s ease-out; }
+@keyframes chomp {
+  0% { opacity: 1; transform: translate(-50%, -50%) scale(1.14); }
+  68% { opacity: 1; transform: translate(-50%, -58%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -68%) scale(0.94); }
+}
 
 #fps {
   position: fixed;
