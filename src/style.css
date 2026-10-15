@@ -41,15 +41,15 @@ button { cursor: pointer; }
   background: rgba(255, 252, 245, 0.55);
   opacity: 0;
 }
-#bite-flash.on { animation: biteflash 0.26s ease-out; }
+#bite-flash.on { animation: biteflash 0.22s ease-out; }
 @keyframes biteflash {
-  0% { opacity: 0.62; }
+  0% { opacity: 0.34; }
   100% { opacity: 0; }
 }
 #chomp {
   position: fixed;
   left: 50%;
-  top: 34%;
+  top: 42%;
   z-index: 6;
   margin: 0;
   pointer-events: none;

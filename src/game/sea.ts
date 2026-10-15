@@ -32,9 +32,6 @@ export class Sea {
   private floorMat: THREE.ShaderMaterial
   private splashMat: THREE.MeshBasicMaterial
   private plankMat: THREE.ShaderMaterial
-  private flakes: THREE.Points
-  private flakeLife: { x: number; y: number; z: number; vx: number; vy: number; vz: number; life: number }[] = []
-  private flakePos: Float32Array
   private readonly uShaft = { value: 1 }
   private readonly uPunch = { value: 0 }
 
@@ -104,10 +101,10 @@ export class Sea {
         uniform float uPunch;
         ${CAUSTIC}
         void main() {
-          float c = caustic(vWorld.xz * 0.045, uTime) * (1.0 + uPunch * 2.4);
+          float c = caustic(vWorld.xz * 0.045, uTime) * (1.0 + uPunch * 1.6);
           float depthShade = clamp((-vWorld.y - 8.0) / 100.0, 0.0, 1.0);
           vec3 col = vColor * mix(0.72 + c * 1.25, 0.38, depthShade);
-          col += vec3(0.62, 0.84, 0.78) * uPunch * 0.48;
+          col += vec3(0.62, 0.84, 0.78) * uPunch * 0.28;
           float dist = length(cameraPosition - vWorld);
           float f = 1.0 - exp(-pow(dist * uFogDensity, 2.0));
           col = mix(col, uFogColor, clamp(f, 0.0, 1.0));
@@ -168,11 +165,11 @@ export class Sea {
           vec3 V = normalize(cameraPosition - vWorld);
           float ndv = abs(dot(normalize(vNormal), V));
           float fres = pow(1.0 - ndv, 2.4);
-          float c = caustic(vWorld.xz * 0.05, uTime) * (1.0 + uPunch * 2.8);
+          float c = caustic(vWorld.xz * 0.05, uTime) * (1.0 + uPunch * 1.7);
           float above = step(0.2, cameraPosition.y);
           vec3 belowCol = mix(uShallow, uSky, fres * 0.75 + 0.12);
           belowCol += vec3(0.55, 0.85, 0.82) * c * 0.45;
-          belowCol += vec3(0.78, 0.96, 0.92) * uPunch * 0.38;
+          belowCol += vec3(0.78, 0.96, 0.92) * uPunch * 0.22;
           belowCol += vec3(1.0) * smoothstep(0.35, 0.9, vWave) * 0.18;
           vec3 aboveCol = mix(vec3(0.05, 0.22, 0.28), uSky, fres * 0.65 + 0.2);
           aboveCol += c * 0.08;
@@ -216,27 +213,6 @@ export class Sea {
     this.bubbles.frustumCulled = false
     this.bubbles.renderOrder = 4
     scene.add(this.bubbles)
-
-    this.flakePos = new Float32Array(48 * 3)
-    const flakeGeo = new THREE.BufferGeometry()
-    flakeGeo.setAttribute('position', new THREE.BufferAttribute(this.flakePos, 3))
-    flakeGeo.setDrawRange(0, 0)
-    this.flakes = new THREE.Points(
-      flakeGeo,
-      new THREE.PointsMaterial({
-        color: '#fff4e4',
-        map: scaleDiamond(),
-        size: 1.15,
-        transparent: true,
-        opacity: 0.95,
-        depthWrite: false,
-        alphaTest: 0.25,
-        sizeAttenuation: true,
-      }),
-    )
-    this.flakes.frustumCulled = false
-    this.flakes.renderOrder = 6
-    scene.add(this.flakes)
 
     this.splashMat = new THREE.MeshBasicMaterial({
       color: '#e9f8f8',
@@ -296,7 +272,6 @@ export class Sea {
     ;(this.plankMat.uniforms.uTint.value as THREE.Color).copy(atmo.plankton)
     this.wrapPlankton(camera.position)
     this.updateBubbles(dt)
-    this.updateFlakes(dt)
     this.updateSplash(dt)
   }
 
@@ -309,23 +284,6 @@ export class Sea {
     this.splashMesh.scale.setScalar(1)
     this.splashLife = 1
     this.splashMesh.visible = true
-  }
-
-  scales(x: number, y: number, z: number): void {
-    for (let i = 0; i < 18; i++) {
-      if (this.flakeLife.length > 46) this.flakeLife.shift()
-      const ang = Math.random() * Math.PI * 2
-      const spd = 1.8 + Math.random() * 4.4
-      this.flakeLife.push({
-        x,
-        y,
-        z,
-        vx: Math.cos(ang) * spd,
-        vy: 0.6 + Math.random() * 3.4,
-        vz: Math.sin(ang) * spd,
-        life: 0.38 + Math.random() * 0.28,
-      })
-    }
   }
 
   burst(x: number, y: number, z: number, n: number): void {
@@ -360,28 +318,6 @@ export class Sea {
     const attr = this.bubbles.geometry.getAttribute('position') as THREE.BufferAttribute
     attr.needsUpdate = true
     this.bubbles.geometry.setDrawRange(0, this.bubbleLife.length)
-  }
-
-  private updateFlakes(dt: number): void {
-    const next = []
-    for (const flake of this.flakeLife) {
-      flake.life -= dt
-      flake.x += flake.vx * dt
-      flake.y += flake.vy * dt
-      flake.z += flake.vz * dt
-      flake.vy -= 2.4 * dt
-      if (flake.life > 0) next.push(flake)
-    }
-    this.flakeLife = next
-    for (let i = 0; i < this.flakeLife.length; i++) {
-      const flake = this.flakeLife[i]
-      this.flakePos[i * 3] = flake.x
-      this.flakePos[i * 3 + 1] = flake.y
-      this.flakePos[i * 3 + 2] = flake.z
-    }
-    const attr = this.flakes.geometry.getAttribute('position') as THREE.BufferAttribute
-    attr.needsUpdate = true
-    this.flakes.geometry.setDrawRange(0, this.flakeLife.length)
   }
 
   private updateSplash(dt: number): void {
@@ -484,26 +420,6 @@ function buildPlankton(): THREE.Points {
   const points = new THREE.Points(geo, mat)
   points.frustumCulled = false
   return points
-}
-
-function scaleDiamond(): THREE.CanvasTexture {
-  const canvas = document.createElement('canvas')
-  canvas.width = 32
-  canvas.height = 32
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return new THREE.CanvasTexture(canvas)
-  ctx.clearRect(0, 0, 32, 32)
-  ctx.fillStyle = '#fff8ee'
-  ctx.beginPath()
-  ctx.moveTo(16, 2)
-  ctx.lineTo(29, 16)
-  ctx.lineTo(16, 30)
-  ctx.lineTo(3, 16)
-  ctx.closePath()
-  ctx.fill()
-  const tex = new THREE.CanvasTexture(canvas)
-  tex.needsUpdate = true
-  return tex
 }
 
 function shaftMaterial(tint: string, uStrength: { value: number }): THREE.ShaderMaterial {

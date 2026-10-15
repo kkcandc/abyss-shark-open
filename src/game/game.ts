@@ -297,7 +297,7 @@ export class Game {
       if (node) node.textContent = `${this.fps.toFixed(0)} fps`
     }
     this.shakeT += realDt
-    if (this.bitePunch > 0) this.bitePunch = Math.max(0, this.bitePunch - realDt / 0.42)
+    if (this.bitePunch > 0) this.bitePunch = Math.max(0, this.bitePunch - realDt / 0.2)
     let dt = realDt
     const playing = this.mode === 'play' && this.overlay === 'none'
     if (playing && this.hitStop > 0) {
@@ -352,7 +352,7 @@ export class Game {
     const atmo = sampleAtmosphere(this.camera.position.x, this.camera.position.y, this.camera.position.z, this.shark.air || this.camera.position.y > -0.2)
     sceneryFog.color.copy(atmo.fog)
     sceneryFog.density.value = atmo.density
-    this.renderer.toneMappingExposure = 1.02 + this.bitePunch * 0.72
+    this.renderer.toneMappingExposure = 1.02 + this.bitePunch * 0.36
     this.sea.setPunch(this.bitePunch)
     this.sea.update(realDt, this.camera, atmo, this.shark.air)
     if (playing && (this.keys.has('shift') || this.burstHeld) && Math.random() < dt * 8) {
@@ -379,11 +379,10 @@ export class Game {
       this.save.fishEaten += 1
       this.shark.growth = this.save.growth
       this.shark.snapBite()
-      this.bitePunch = 1
+      this.bitePunch = this.bitePunch < 0.4 ? 1 : Math.max(this.bitePunch, 0.42)
       this.hitStop = 0.045
       this.audio.bite()
-      this.sea.burst(scan.eat.x, scan.eat.y, scan.eat.z, 8)
-      this.sea.scales(scan.eat.x, scan.eat.y, scan.eat.z)
+      this.sea.burst(scan.eat.x, scan.eat.y, scan.eat.z, 14)
       this.hud.chomp()
       const next = stageIndex(this.save.growth)
       if (next !== this.stage) {
