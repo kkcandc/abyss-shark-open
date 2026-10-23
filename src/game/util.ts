@@ -4,6 +4,10 @@ export const TAU = Math.PI * 2
 
 export const uTime = { value: 0 }
 
+export function prefersReducedMotion(): boolean {
+  return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
 export function clamp(v: number, a: number, b: number): number {
   return Math.max(a, Math.min(b, v))
 }

@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { STAGES, floorHeight, stageIndex, stageScale, WORLD_LIMIT } from './data'
 import { finShape, latheBody } from './geo'
-import { alignZ, clamp, lerp, wrapAngle } from './util'
+import { alignZ, clamp, lerp, prefersReducedMotion, wrapAngle } from './util'
 
 export interface SwimInput {
   yaw: number
@@ -31,6 +31,8 @@ export class Shark {
   nose = 0.86
 
   private tail: THREE.Group
+  private pecR: THREE.Mesh
+  private pecL: THREE.Mesh
   private jaw: THREE.Object3D
   private bodyMat: THREE.MeshStandardMaterial
   private finMat: THREE.MeshStandardMaterial
@@ -40,6 +42,7 @@ export class Shark {
   private readonly q = new THREE.Quaternion()
   private readonly white = new THREE.Color('#ffffff')
   private readonly tint = new THREE.Color()
+  private readonly reduced = prefersReducedMotion()
 
   constructor(scene: THREE.Scene) {
     this.bodyMat = new THREE.MeshStandardMaterial({
@@ -125,6 +128,8 @@ export class Shark {
     pecL.rotation.z = 0.35
     pecL.rotation.y = -0.15
     this.group.add(pecL)
+    this.pecR = pec
+    this.pecL = pecL
 
     this.tail = new THREE.Group()
     this.tail.position.set(0, 0.01, -0.86)
@@ -256,8 +261,8 @@ export class Shark {
     }
 
     const yawVel = input.yaw * yawRate - input.mouseX * 0.00235 / Math.max(dt, 0.001)
-    const targetRoll = clamp(-yawVel * 0.22, -0.55, 0.55)
-    this.roll = lerp(this.roll, this.air ? targetRoll * 0.4 : targetRoll, 1 - Math.exp(-4 * dt))
+    const targetRoll = clamp(-yawVel * 0.48, -0.82, 0.82)
+    this.roll = lerp(this.roll, this.air ? targetRoll * 0.35 : targetRoll, 1 - Math.exp(-6 * dt))
 
     this.writeForward()
 
@@ -329,8 +334,15 @@ export class Shark {
   }
 
   animate(time: number, dt: number): void {
-    const wag = Math.sin(time * (3.2 + this.speed * 0.28))
-    this.tail.rotation.y = wag * (0.34 + Math.min(this.speed, 22) * 0.012)
+    const beat = this.reduced ? 1.15 : 3.2 + this.speed * 0.28
+    const wag = Math.sin(time * beat)
+    const tailAmp = this.reduced ? 0.12 : 0.34 + Math.min(this.speed, 22) * 0.012
+    this.tail.rotation.y = wag * tailAmp
+    if (!this.reduced) {
+      const flap = wag * (0.06 + Math.min(this.speed, 18) * 0.005)
+      this.pecR.rotation.z = -0.35 + flap
+      this.pecL.rotation.z = 0.35 - flap
+    }
     let jaw = this.lunge > 0 ? 0.78 : 0.05
     if (this.bite > 0) {
       const u = 1 - this.bite / this.biteWindow
@@ -346,9 +358,25 @@ export class Shark {
     this.animate(time, dt)
     const lungeK = this.lunge > 0 ? this.lunge / 0.36 : 0
     const biteK = biteLeft > 0 ? Math.sin((1 - biteLeft / this.biteWindow) * Math.PI) : 0
+    let sway = 0
+    let bob = 0
+    let swimRoll = 0
+    if (!this.reduced) {
+      const phase = time * (2.6 + this.speed * 0.22)
+      const amp = (0.035 + Math.min(this.speed, 20) * 0.0048) * this.scale
+      const swing = Math.sin(phase)
+      sway = swing * amp
+      bob = Math.sin(phase * 2) * amp * 0.45
+      swimRoll = swing * (0.045 + Math.min(this.speed, 18) * 0.0035)
+    }
+    _swaySide.crossVectors(_swayUp, this.forward)
+    if (_swaySide.lengthSq() < 1e-6) _swaySide.set(1, 0, 0)
+    else _swaySide.normalize()
     this.group.position.copy(this.position).addScaledVector(this.forward, lungeK * 0.22 + biteK * 0.48)
+    this.group.position.addScaledVector(_swaySide, sway)
+    this.group.position.y += bob
     this.group.scale.setScalar(this.scale * (1 + biteK * 0.04))
-    alignZ(this.q, this.forward, this.roll)
+    alignZ(this.q, this.forward, this.roll + swimRoll)
     this.group.quaternion.copy(this.q)
   }
 
@@ -367,3 +395,6 @@ export class Shark {
     this.scar.visible = stage >= 3
   }
 }
+
+const _swayUp = new THREE.Vector3(0, 1, 0)
+const _swaySide = new THREE.Vector3()
