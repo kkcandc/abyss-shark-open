@@ -1,7 +1,7 @@
 import './style.css'
 import { Game } from './game/game'
 
-export const ABYSS_BUILD = 'bite-punch-1'
+export const ABYSS_BUILD = 'swimfeel-2026-10-24'
 
 document.documentElement.dataset.abyssBuild = ABYSS_BUILD
 console.info(`abyss-build ${ABYSS_BUILD}`)

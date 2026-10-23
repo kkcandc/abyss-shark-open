@@ -19,6 +19,7 @@ import { clearSave, defaultSave, hasHistory, loadSave, writeSave, type SaveData 
 import { sceneryFog, Scenery } from './scenery'
 import { Sea } from './sea'
 import { Shark, type SwimInput } from './shark'
+import { SwimFeel } from './swimfeel'
 import { clamp, formatDive, lerp, uTime } from './util'
 
 type Overlay = 'none' | 'map' | 'codex' | 'pause'
@@ -29,6 +30,7 @@ export class Game {
   private camera: THREE.PerspectiveCamera
   private composer: EffectComposer
   private sea: Sea
+  private swimFeel: SwimFeel
   private scenery: Scenery
   private fauna: Fauna
   private shark: Shark
@@ -81,6 +83,7 @@ export class Game {
     this.camera = new THREE.PerspectiveCamera(64, window.innerWidth / window.innerHeight, 0.12, 2200)
     this.sea = new Sea(this.scene)
     this.sea.addShafts(this.scene)
+    this.swimFeel = new SwimFeel(this.scene)
     this.scenery = new Scenery(this.scene)
     this.fauna = new Fauna(this.scene)
     this.shark = new Shark(this.scene)
@@ -355,10 +358,16 @@ export class Game {
     this.renderer.toneMappingExposure = 1.02 + this.bitePunch * 0.36
     this.sea.setPunch(this.bitePunch)
     this.sea.update(realDt, this.camera, atmo, this.shark.air)
-    if (playing && (this.keys.has('shift') || this.burstHeld) && Math.random() < dt * 8) {
-      const tail = this.shark.position.clone().addScaledVector(this.shark.forward, -this.shark.scale)
-      this.sea.burst(tail.x, tail.y, tail.z, 1)
-    }
+    const boosting = this.shark.lunge > 0 || (playing && (this.keys.has('shift') || this.burstHeld))
+    this.swimFeel.update(
+      realDt,
+      this.camera,
+      this.shark,
+      boosting,
+      this.mode === 'attract' || playing,
+      atmo.shafts,
+      atmo.sunColor,
+    )
     this.audio.setDepth(Math.max(0, -this.camera.position.y), this.overlay !== 'none' || this.mode === 'attract')
     this.cardsTick(realDt)
     this.paintHud(realDt)
@@ -503,7 +512,7 @@ export class Game {
     _look.copy(s.position).addScaledVector(s.forward, attract ? 1.4 : 2.4)
     this.camera.up.set(0, 1, 0)
     this.camera.lookAt(_look)
-    this.camera.rotateZ(s.roll * (attract ? 0.25 : 0.5))
+    this.camera.rotateZ(s.roll * (attract ? 0.2 : 0.28))
     const targetFov = s.speed > 15 ? 76 : 64
     this.baseFov = lerp(this.baseFov, targetFov, 1 - Math.exp(-3 * dt))
     this.camera.fov = this.baseFov + (!attract && this.bitePunch > 0 ? this.bitePunch * 8 : 0)
